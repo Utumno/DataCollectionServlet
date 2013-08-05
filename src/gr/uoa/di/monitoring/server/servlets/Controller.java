@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("serial")
 class Controller extends HttpServlet {
 
+	static final String DATA_COLLECTION_JSP = "/WEB-INF/jsp/data_collection.jsp";
 	static ServletContext sc;
 	Logger log;
 
