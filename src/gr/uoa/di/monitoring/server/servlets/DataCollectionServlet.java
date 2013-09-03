@@ -1,5 +1,7 @@
 package gr.uoa.di.monitoring.server.servlets;
 
+import gr.uoa.di.monitoring.model.Battery;
+
 import java.io.IOException;
 import java.util.Collection;
 
@@ -11,7 +13,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.Part;
 
 @SuppressWarnings("serial")
-@WebServlet("/datacollection")
+@WebServlet("/")
 @MultipartConfig()
 public final class DataCollectionServlet extends Controller {
 
@@ -19,7 +21,7 @@ public final class DataCollectionServlet extends Controller {
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp)
 			throws ServletException, IOException {
 		// TODO forbidden !
-		// req.setAttribute("key", Battery.hallo());
+		req.setAttribute("key", Battery.hallo());
 		sc.getRequestDispatcher(DATA_COLLECTION_JSP).forward(req, resp);
 	}
 
