@@ -3,9 +3,7 @@ package gr.uoa.di.monitoring.server.servlets;
 import gr.uoa.di.monitoring.model.Battery;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Collection;
 
 import javax.servlet.ServletException;
@@ -17,8 +15,18 @@ import javax.servlet.http.Part;
 
 @SuppressWarnings("serial")
 @WebServlet("/")
-@MultipartConfig()
+@MultipartConfig
 public final class DataCollectionServlet extends Controller {
+
+	// TODO create the dir in the server on init
+	private static final String UPLOAD_LOCATION_PROPERTY_KEY = "upload.location";
+	private String uploadsDirName;
+
+	@Override
+	public void init() throws ServletException {
+		super.init();
+		uploadsDirName = property(UPLOAD_LOCATION_PROPERTY_KEY);
+	}
 
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp)
@@ -33,17 +41,11 @@ public final class DataCollectionServlet extends Controller {
 			throws ServletException, IOException {
 		Collection<Part> parts = req.getParts();
 		for (Part part : parts) {
-			String sRootPath = new File("").getAbsolutePath();
-			File save = new File(sRootPath, getFilename(part) + "_"
-				+ System.currentTimeMillis());
-			log.debug(save.getAbsolutePath());
-			InputStream filecontent = part.getInputStream();
-			FileOutputStream f = new FileOutputStream(save);
-			int read = 0;
-			byte[] bytes = new byte[1024];
-			while ((read = filecontent.read(bytes)) != -1) {
-				f.write(bytes, 0, read);
-			}
+			File save = new File(uploadsDirName, getFilename(part) + "_"
+				+ System.currentTimeMillis() + ".zip");
+			final String absolutePath = save.getAbsolutePath();
+			log.debug(absolutePath);
+			part.write(absolutePath);
 			sc.getRequestDispatcher(DATA_COLLECTION_JSP).forward(req, resp);
 		}
 	}
