@@ -1,10 +1,16 @@
 package gr.uoa.di.monitoring.server.servlets;
 
+import gr.uoa.di.monitoring.android.persist.FileStore;
 import gr.uoa.di.monitoring.model.Battery;
+import gr.uoa.di.monitoring.model.Position.LocationFields;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.EnumMap;
+import java.util.List;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.MultipartConfig;
@@ -31,8 +37,11 @@ public final class DataCollectionServlet extends Controller {
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp)
 			throws ServletException, IOException {
-		// TODO forbidden !
-		req.setAttribute("key", Battery.hallo());
+		System.out.println(Battery.hallo());
+		List<EnumMap<LocationFields, List<Byte>>> list = FileStore
+				.getEntriesLoc(new FileInputStream(
+						"C:/_/logs/354957034870710/loc"));
+		req.setAttribute("key", Arrays.toString(list.toArray()));
 		sc.getRequestDispatcher(DATA_COLLECTION_JSP).forward(req, resp);
 	}
 
