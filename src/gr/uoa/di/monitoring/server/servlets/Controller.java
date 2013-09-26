@@ -1,7 +1,14 @@
 package gr.uoa.di.monitoring.server.servlets;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Properties;
 
 import javax.servlet.ServletContext;
@@ -16,10 +23,13 @@ class Controller extends HttpServlet {
 
 	static final String DATA_COLLECTION_JSP = "/WEB-INF/jsp/data_collection.jsp";
 	static ServletContext sc;
+	static File workDir;
 	Logger log;
 	// private
 	// "/WEB-INF/app.properties" also works...
 	private static final String PROPERTIES_PATH = "WEB-INF/app.properties";
+	private static final String TEMP_DIR = Controller.class.getPackage()
+			.toString().split(" ")[1];
 	private Properties properties;
 
 	@Override
@@ -32,6 +42,38 @@ class Controller extends HttpServlet {
 		} catch (IOException e) {
 			throw new RuntimeException("Can't load properties file", e);
 		}
+		log.debug("CWD : " + new File(".").getAbsolutePath());
+		// final Enumeration<String> attributeNames = sc.getAttributeNames();
+		// for (; attributeNames.hasMoreElements();) {
+		// log.debug(attributeNames.nextElement());
+		// }
+		// see : http://www.znetdevelopment.com/blogs/2012/03/14/
+		// File tmpDir = (File)
+		// sc.getAttribute("javax.servlet.context.tempdir");
+		log.debug("Tmp Dir string : " + ServletContext.TEMPDIR);
+		File tmpDir = (File) sc.getAttribute(ServletContext.TEMPDIR);
+		if (tmpDir == null) {
+			throw new ServletException(
+					"Servlet container does not provide temporary directory");
+		}
+		workDir = new File(tmpDir, TEMP_DIR);
+		log.debug("workDir : " + workDir.getAbsolutePath());
+		if (!(workDir.exists() && workDir.isDirectory()) && !workDir.mkdirs()) {
+			throw new ServletException("Unable to create "
+				+ workDir.getAbsolutePath() + " temporary directory");
+		}
+	}
+
+	@Override
+	public void destroy() {
+		final String workDirPath = workDir.getAbsolutePath();
+		try {
+			removeRecursive(Paths.get(workDirPath));
+			log.debug("Deleted tmp directory " + workDirPath);
+		} catch (IOException e) {
+			log.warn("Failed to delete tmp directory in " + workDirPath, e);
+		}
+		super.destroy();
 	}
 
 	private void loadProperties() throws IOException {
@@ -45,5 +87,40 @@ class Controller extends HttpServlet {
 
 	String property(final String key) {
 		return properties.getProperty(key);
+	}
+
+	// http://stackoverflow.com/a/8685959/281545
+	// should be in a helpers class
+	static void removeRecursive(Path path) throws IOException {
+		Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+
+			@Override
+			public FileVisitResult visitFile(Path file,
+					BasicFileAttributes attrs) throws IOException {
+				Files.delete(file);
+				return FileVisitResult.CONTINUE;
+			}
+
+			@Override
+			public FileVisitResult visitFileFailed(Path file, IOException exc)
+					throws IOException {
+				// try to delete the file anyway, even if its attributes
+				// could not be read, since delete-only access is
+				// theoretically possible
+				Files.delete(file);
+				return FileVisitResult.CONTINUE;
+			}
+
+			@Override
+			public FileVisitResult postVisitDirectory(Path dir, IOException exc)
+					throws IOException {
+				if (exc == null) {
+					Files.delete(dir);
+					return FileVisitResult.CONTINUE;
+				}
+				// directory iteration failed; propagate exception
+				throw exc;
+			}
+		});
 	}
 }
