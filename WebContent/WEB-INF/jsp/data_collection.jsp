@@ -8,8 +8,7 @@
 <title>Data collection</title>
 </head>
 <body>
-	<h1>Data</h1>
-	<br>
+	<h1 style="text-align:center">Data</h1>
 	<br>
 	<br>
 	<c:choose>

@@ -1,7 +1,7 @@
 package gr.uoa.di.monitoring.server.servlets;
 
-import gr.uoa.di.android.helpers.Zip;
-import gr.uoa.di.android.helpers.Zip.CompressException;
+import gr.uoa.di.java.helpers.Zip;
+import gr.uoa.di.java.helpers.Zip.CompressException;
 import gr.uoa.di.monitoring.android.persist.FileStore;
 import gr.uoa.di.monitoring.model.Data;
 import gr.uoa.di.monitoring.model.ParserException;
@@ -34,14 +34,21 @@ import javax.servlet.http.Part;
 @MultipartConfig
 public final class DataCollectionServlet extends Controller {
 
-	// TODO create the dir in the server on init
 	private static final String UPLOAD_LOCATION_PROPERTY_KEY = "upload.location";
-	private String uploadsDirName;
+	private volatile String uploadsDirName;
 
 	@Override
 	public void init() throws ServletException {
 		super.init();
-		uploadsDirName = property(UPLOAD_LOCATION_PROPERTY_KEY);
+		if (uploadsDirName == null) {
+			uploadsDirName = property(UPLOAD_LOCATION_PROPERTY_KEY);
+			final File uploadsDir = new File(uploadsDirName);
+			if ((!uploadsDir.exists() || !uploadsDir.isDirectory())
+				&& !uploadsDir.mkdirs()) {
+				throw new ServletException("Unable to create "
+					+ uploadsDir.getAbsolutePath() + " data upload directory");
+			}
+		}
 	}
 
 	@Override
@@ -57,8 +64,7 @@ public final class DataCollectionServlet extends Controller {
 					master_map.put(dirname,
 						FileStore.parse(node.getAbsolutePath(), dirname));
 				} catch (ParserException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+					log.warn("Failed to parse " + node.getAbsolutePath(), e);
 				}
 			}
 		}
@@ -119,7 +125,6 @@ public final class DataCollectionServlet extends Controller {
 				log.warn("Can't create "
 					+ imeiDirInUploadedFiles.getAbsolutePath());
 			}
-			log.debug("DOPOST");
 			for (File file : new File(unzipDirPath, imei).listFiles()) {
 				final File destination = new File(imeiDirInUploadedFiles,
 						file.getName());
@@ -150,7 +155,7 @@ public final class DataCollectionServlet extends Controller {
 		private static BufferedOutputStream createAppendableStream(
 				File destination) throws FileNotFoundException {
 			return new BufferedOutputStream(new FileOutputStream(destination,
-					true));
+				true));
 		}
 
 		private static void appendFile(OutputStream output, File source)
@@ -198,9 +203,9 @@ public final class DataCollectionServlet extends Controller {
 		for (String cd : part.getHeader("content-disposition").split(";")) {
 			if (cd.trim().startsWith("filename")) {
 				String filename = cd.substring(cd.indexOf('=') + 1).trim()
-						.replace("\"", "");
+					.replace("\"", "");
 				return filename.substring(filename.lastIndexOf('/') + 1)
-						.substring(filename.lastIndexOf('\\') + 1); // MSIE fix.
+					.substring(filename.lastIndexOf('\\') + 1); // MSIE fix.
 			}
 		}
 		return null;
