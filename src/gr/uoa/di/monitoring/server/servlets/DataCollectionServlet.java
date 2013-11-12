@@ -74,8 +74,14 @@ public final class DataCollectionServlet extends Controller {
 
 	@Override
 	protected void doPost(HttpServletRequest req, HttpServletResponse resp)
-			throws ServletException, IOException {
-		Collection<Part> parts = req.getParts();
+			throws ServletException {
+		Collection<Part> parts;
+		try {
+			parts = req.getParts();
+		} catch (IllegalStateException | IOException e) {
+			log.error("Can't get file parts from " + req, e);
+			return;
+		}
 		/*
 		 * FIXME : java.io.IOException:
 		 * org.apache.tomcat.util.http.fileupload.FileUploadException: Read
@@ -102,38 +108,90 @@ public final class DataCollectionServlet extends Controller {
 		for (Part part : parts) {
 			// save the zip into uploads dir
 			final String filename = getFilename(part);
-			File save = new File(uploadsDirName, filename + "_"
+			File uploadedFile = new File(uploadsDirName, filename + "_"
 				+ System.currentTimeMillis() + ".zip");
 			final String imei = FileStore.getDeviceID(filename);
-			final String absolutePath = save.getAbsolutePath();
+			final String absolutePath = uploadedFile.getAbsolutePath();
 			log.debug("absolutePath :" + absolutePath);
-			part.write(absolutePath);
+			try {
+				part.write(absolutePath);
+			} catch (IOException e) {
+				log.error("Can't write file " + absolutePath + " from part "
+					+ part, e);
+				return;
+			}
 			// unzip the zip
 			final String unzipDirPath = workDir.getAbsolutePath()
-				+ File.separator + save.getName();
+				+ File.separator + uploadedFile.getName();
 			log.debug("unzipDirPath :" + unzipDirPath);
 			try {
-				Zip.unZipFolder(save, unzipDirPath);
+				Zip.unZipFolder(uploadedFile, unzipDirPath);
 			} catch (CompressException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				log.error("Can't unzip file " + absolutePath, e);
 			}
 			// merge the files
 			final File imeiDirInUploadedFiles = new File(uploadsDirName, imei);
 			if ((!(imeiDirInUploadedFiles.exists() && imeiDirInUploadedFiles
-					.isDirectory()) && !imeiDirInUploadedFiles.mkdirs())) {
-				log.warn("Can't create "
+				.isDirectory()) && !imeiDirInUploadedFiles.mkdirs())) {
+				log.error("Can't create "
 					+ imeiDirInUploadedFiles.getAbsolutePath());
+				return;
 			}
-			for (File file : new File(unzipDirPath, imei).listFiles()) {
+			final File unzipedFolder = new File(unzipDirPath, imei); // get this
+			// from FileStore
+			for (File file : unzipedFolder.listFiles()) {
 				final File destination = new File(imeiDirInUploadedFiles,
-						file.getName());
-				log.debug("DOPOST joinFiles( " + destination.getAbsolutePath());
-				IOCopier.joinFiles(destination, new File[] { file });
+					file.getName());
+				try {
+					IOCopier.joinFiles(destination, new File[] { file });
+				} catch (IOException e) {
+					log.error("Failed to append " + file.getAbsolutePath()
+						+ " to " + destination.getAbsolutePath());
+					return;
+				}
 			}
-			// delete the files FIXME : finally
-			removeRecursive(Paths.get(unzipDirPath));
-			sc.getRequestDispatcher(DATA_COLLECTION_JSP).forward(req, resp);
+			try {
+				removeRecursive(Paths.get(unzipDirPath));
+			} catch (IOException e) {
+				String msg = "Error deleting folder "
+					+ unzipedFolder.getAbsolutePath();
+				if (e instanceof java.nio.file.DirectoryNotEmptyException) {
+					msg = "Failed to delete folder "
+						+ unzipedFolder.getAbsolutePath()
+						+ ". Still contains : ";
+					for (File part2 : unzipedFolder.listFiles()) {
+						msg += part2.getAbsolutePath() + "\n";
+					}
+					log.error(msg, e);
+				}
+			}
+			// FIXME :
+			// SEVERE: Servlet.service() for servlet
+			// [gr.uoa.di.monitoring.server.servlets.DataCollectionServlet]
+			// in
+			// context with path [/DataCollectionServlet] threw exception
+			// java.nio.file.DirectoryNotEmptyException:
+			// C:\Dropbox\eclipse_workspaces\_kepler\.metadata\.plugins\org.eclipse.wst.server.core\tmp0\work\Catalina\localhost\DataCollectionServlet\gr.uoa.di.monitoring.server.servlets\354957034870710_1384211946386_1384211938171.zip\354957034870710
+			// at
+			// sun.nio.fs.WindowsFileSystemProvider.implDelete(WindowsFileSystemProvider.java:265)
+			// at
+			// sun.nio.fs.AbstractFileSystemProvider.delete(AbstractFileSystemProvider.java:103)
+			// at java.nio.file.Files.delete(Files.java:1077)
+			// at
+			// gr.uoa.di.monitoring.server.servlets.Controller$1.postVisitDirectory(Controller.java:118)
+			// at
+			// gr.uoa.di.monitoring.server.servlets.Controller$1.postVisitDirectory(Controller.java:1)
+			// at java.nio.file.FileTreeWalker.walk(FileTreeWalker.java:224)
+			// at java.nio.file.FileTreeWalker.walk(FileTreeWalker.java:199)
+			// at java.nio.file.FileTreeWalker.walk(FileTreeWalker.java:69)
+			// at java.nio.file.Files.walkFileTree(Files.java:2600)
+			// at java.nio.file.Files.walkFileTree(Files.java:2633)
+			// at
+			// gr.uoa.di.monitoring.server.servlets.Controller.removeRecursive(Controller.java:95)
+			// at
+			// gr.uoa.di.monitoring.server.servlets.DataCollectionServlet.doPost(DataCollectionServlet.java:136)
+			// OBVIOUSLY WHEN I TRY TO EMPTY THE DIR AND someone put more
+			// files
 		}
 	}
 
