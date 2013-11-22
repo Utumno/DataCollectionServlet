@@ -94,20 +94,29 @@ class Controller extends HttpServlet {
 	static void removeRecursive(Path path) throws IOException {
 		Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
 
+			final Logger logger = LoggerFactory.getLogger(this.getClass());
 			@Override
 			public FileVisitResult visitFile(Path file,
 					BasicFileAttributes attrs) throws IOException {
+				logger.warn("Deleting " + file.getFileName());
 				Files.delete(file);
+				logger.warn("DELETED " + file.getFileName());
 				return FileVisitResult.CONTINUE;
 			}
 
 			@Override
-			public FileVisitResult visitFileFailed(Path file, IOException exc)
-					throws IOException {
+			public FileVisitResult visitFileFailed(Path file, IOException exc) {
 				// try to delete the file anyway, even if its attributes
 				// could not be read, since delete-only access is
 				// theoretically possible
-				Files.delete(file);
+				logger.warn(
+					"Delete file " + file + " failed", exc);
+				try {
+					Files.delete(file);
+				} catch (IOException e) {
+					logger.warn(
+						"Delete file " + file + " failed again", exc);
+				}
 				return FileVisitResult.CONTINUE;
 			}
 

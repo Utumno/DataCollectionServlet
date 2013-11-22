@@ -43,8 +43,7 @@ public final class DataCollectionServlet extends Controller {
 		if (uploadsDirName == null) {
 			uploadsDirName = property(UPLOAD_LOCATION_PROPERTY_KEY);
 			final File uploadsDir = new File(uploadsDirName);
-			if ((!uploadsDir.exists() || !uploadsDir.isDirectory())
-				&& !uploadsDir.mkdirs()) {
+			if (!uploadsDir.isDirectory() && !uploadsDir.mkdirs()) {
 				throw new ServletException("Unable to create "
 					+ uploadsDir.getAbsolutePath() + " data upload directory");
 			}
@@ -153,17 +152,16 @@ public final class DataCollectionServlet extends Controller {
 			try {
 				removeRecursive(Paths.get(unzipDirPath));
 			} catch (IOException e) {
-				String msg = "Error deleting folder "
+				String msg = "Failed to delete folder "
 					+ unzipedFolder.getAbsolutePath();
 				if (e instanceof java.nio.file.DirectoryNotEmptyException) {
-					msg = "Failed to delete folder "
-						+ unzipedFolder.getAbsolutePath()
-						+ ". Still contains : ";
-					for (File part2 : unzipedFolder.listFiles()) {
-						msg += part2.getAbsolutePath() + "\n";
+					msg += ". Still contains : ";
+					final File[] listFiles = unzipedFolder.listFiles();
+					if (listFiles != null) for (File file : listFiles) {
+						msg += file.getAbsolutePath() + "\n";
 					}
-					log.error(msg, e);
 				}
+				log.error(msg, e);
 			}
 			// FIXME :
 			// SEVERE: Servlet.service() for servlet
