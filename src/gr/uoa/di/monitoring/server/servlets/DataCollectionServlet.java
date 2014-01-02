@@ -2,9 +2,9 @@ package gr.uoa.di.monitoring.server.servlets;
 
 import gr.uoa.di.java.helpers.Zip;
 import gr.uoa.di.java.helpers.Zip.CompressException;
-import gr.uoa.di.monitoring.android.persist.FileStore;
+import gr.uoa.di.monitoring.android.files.Parser;
+import gr.uoa.di.monitoring.android.files.ParserException;
 import gr.uoa.di.monitoring.model.Data;
-import gr.uoa.di.monitoring.model.ParserException;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -61,7 +61,7 @@ public final class DataCollectionServlet extends Controller {
 				try {
 					final String dirname = node.getName(); // device id
 					master_map.put(dirname,
-						FileStore.parse(node.getAbsolutePath(), dirname));
+						Parser.parse(node.getAbsolutePath()));
 				} catch (ParserException e) {
 					log.warn("Failed to parse " + node.getAbsolutePath(), e);
 				}
@@ -109,7 +109,7 @@ public final class DataCollectionServlet extends Controller {
 			final String filename = getFilename(part);
 			File uploadedFile = new File(uploadsDirName, filename + "_"
 				+ System.currentTimeMillis() + ".zip");
-			final String imei = FileStore.getDeviceID(filename);
+			final String imei = Parser.getDeviceID(filename);
 			final String absolutePath = uploadedFile.getAbsolutePath();
 			log.debug("absolutePath :" + absolutePath);
 			try {
@@ -130,8 +130,8 @@ public final class DataCollectionServlet extends Controller {
 			}
 			// merge the files
 			final File imeiDirInUploadedFiles = new File(uploadsDirName, imei);
-			if ((!(imeiDirInUploadedFiles.exists() && imeiDirInUploadedFiles
-				.isDirectory()) && !imeiDirInUploadedFiles.mkdirs())) {
+			if (!imeiDirInUploadedFiles.isDirectory()
+				&& !imeiDirInUploadedFiles.mkdirs()) {
 				log.error("Can't create "
 					+ imeiDirInUploadedFiles.getAbsolutePath());
 				return;
@@ -152,44 +152,19 @@ public final class DataCollectionServlet extends Controller {
 			try {
 				removeRecursive(Paths.get(unzipDirPath));
 			} catch (IOException e) {
-				String msg = "Failed to delete folder "
-					+ unzipedFolder.getAbsolutePath();
+				String msg = "Failed to delete folder " + unzipDirPath;
 				if (e instanceof java.nio.file.DirectoryNotEmptyException) {
 					msg += ". Still contains : ";
-					final File[] listFiles = unzipedFolder.listFiles();
+					final File[] listFiles = Paths.get(unzipDirPath).toFile()
+						.listFiles();
 					if (listFiles != null) for (File file : listFiles) {
 						msg += file.getAbsolutePath() + "\n";
 					}
 				}
 				log.error(msg, e);
 			}
-			// FIXME :
-			// SEVERE: Servlet.service() for servlet
-			// [gr.uoa.di.monitoring.server.servlets.DataCollectionServlet]
-			// in
-			// context with path [/DataCollectionServlet] threw exception
-			// java.nio.file.DirectoryNotEmptyException:
-			// C:\Dropbox\eclipse_workspaces\_kepler\.metadata\.plugins\org.eclipse.wst.server.core\tmp0\work\Catalina\localhost\DataCollectionServlet\gr.uoa.di.monitoring.server.servlets\354957034870710_1384211946386_1384211938171.zip\354957034870710
-			// at
-			// sun.nio.fs.WindowsFileSystemProvider.implDelete(WindowsFileSystemProvider.java:265)
-			// at
-			// sun.nio.fs.AbstractFileSystemProvider.delete(AbstractFileSystemProvider.java:103)
-			// at java.nio.file.Files.delete(Files.java:1077)
-			// at
-			// gr.uoa.di.monitoring.server.servlets.Controller$1.postVisitDirectory(Controller.java:118)
-			// at
-			// gr.uoa.di.monitoring.server.servlets.Controller$1.postVisitDirectory(Controller.java:1)
-			// at java.nio.file.FileTreeWalker.walk(FileTreeWalker.java:224)
-			// at java.nio.file.FileTreeWalker.walk(FileTreeWalker.java:199)
-			// at java.nio.file.FileTreeWalker.walk(FileTreeWalker.java:69)
-			// at java.nio.file.Files.walkFileTree(Files.java:2600)
-			// at java.nio.file.Files.walkFileTree(Files.java:2633)
-			// at
-			// gr.uoa.di.monitoring.server.servlets.Controller.removeRecursive(Controller.java:95)
-			// at
-			// gr.uoa.di.monitoring.server.servlets.DataCollectionServlet.doPost(DataCollectionServlet.java:136)
-			// OBVIOUSLY WHEN I TRY TO EMPTY THE DIR AND someone put more
-			// files
+			// FIXME : http://stackoverflow.com/questions/19935624/
+			// java-nio-file-files-deletepath-path-will-always-throw-on-failure
 		}
 	}
 

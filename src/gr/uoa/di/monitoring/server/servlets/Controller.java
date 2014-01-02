@@ -77,12 +77,13 @@ class Controller extends HttpServlet {
 	}
 
 	private void loadProperties() throws IOException {
-		InputStream inputStream = sc.getResourceAsStream(PROPERTIES_PATH);
-		if (inputStream == null)
-			throw new RuntimeException("Can't locate properties file");
-		properties = new Properties();
-		// load the inputStream using the Properties
-		properties.load(inputStream);
+		try (InputStream inputStream = sc.getResourceAsStream(PROPERTIES_PATH)) {
+			if (inputStream == null)
+				throw new RuntimeException("Can't locate properties file");
+			properties = new Properties();
+			// load the inputStream using the Properties
+			properties.load(inputStream);
+		}
 	}
 
 	String property(final String key) {
