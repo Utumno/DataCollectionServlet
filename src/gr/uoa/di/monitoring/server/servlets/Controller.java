@@ -27,7 +27,7 @@ class Controller extends HttpServlet {
 	Logger log;
 	// private
 	// "/WEB-INF/app.properties" also works...
-	private static final String PROPERTIES_PATH = "WEB-INF/app.properties";
+	private static final String PROPERTIES_PATH = "/WEB-INF/app.properties";
 	private static final String TEMP_DIR = Controller.class.getPackage()
 			.toString().split(" ")[1];
 	private Properties properties;
@@ -37,12 +37,14 @@ class Controller extends HttpServlet {
 		super.init();
 		if (sc == null) sc = getServletContext();
 		log = LoggerFactory.getLogger(this.getClass());
+		log.info("CWD : " + new File(".").getAbsolutePath());
+		final Object tmpDirAttr = sc.getAttribute(ServletContext.TEMPDIR);
+		log.info("Tmp Dir : " + tmpDirAttr);
 		try {
 			loadProperties();
 		} catch (IOException e) {
 			throw new RuntimeException("Can't load properties file", e);
 		}
-		log.debug("CWD : " + new File(".").getAbsolutePath());
 		// final Enumeration<String> attributeNames = sc.getAttributeNames();
 		// for (; attributeNames.hasMoreElements();) {
 		// log.debug(attributeNames.nextElement());
@@ -50,14 +52,13 @@ class Controller extends HttpServlet {
 		// see : http://www.znetdevelopment.com/blogs/2012/03/14/
 		// File tmpDir = (File)
 		// sc.getAttribute("javax.servlet.context.tempdir");
-		log.debug("Tmp Dir string : " + ServletContext.TEMPDIR);
-		File tmpDir = (File) sc.getAttribute(ServletContext.TEMPDIR);
+		File tmpDir = (File) tmpDirAttr;
 		if (tmpDir == null) {
 			throw new ServletException(
 					"Servlet container does not provide temporary directory");
 		}
 		workDir = new File(tmpDir, TEMP_DIR);
-		log.debug("workDir : " + workDir.getAbsolutePath());
+		log.info("workDir : " + workDir.getAbsolutePath());
 		if (!(workDir.exists() && workDir.isDirectory()) && !workDir.mkdirs()) {
 			throw new ServletException("Unable to create "
 				+ workDir.getAbsolutePath() + " temporary directory");
