@@ -100,9 +100,9 @@ class Controller extends HttpServlet {
 			@Override
 			public FileVisitResult visitFile(Path file,
 					BasicFileAttributes attrs) throws IOException {
-				logger.warn("Deleting " + file.getFileName());
+				logger.debug("Deleting " + file.getFileName());
 				Files.delete(file);
-				logger.warn("DELETED " + file.getFileName());
+				logger.debug("DELETED " + file.getFileName());
 				return FileVisitResult.CONTINUE;
 			}
 

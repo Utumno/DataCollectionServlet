@@ -43,6 +43,7 @@ public final class DataCollectionServlet extends Controller {
 		if (uploadsDirName == null) {
 			uploadsDirName = property(UPLOAD_LOCATION_PROPERTY_KEY);
 			final File uploadsDir = new File(uploadsDirName);
+			log.info("Uploads dir " + uploadsDir.getAbsolutePath());
 			if (!uploadsDir.isDirectory() && !uploadsDir.mkdirs()) {
 				throw new ServletException("Unable to create "
 					+ uploadsDir.getAbsolutePath() + " data upload directory");
