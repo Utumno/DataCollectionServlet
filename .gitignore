@@ -2,3 +2,4 @@ build/
 ~/
 WebContent/WEB-INF/lib/link_to_monitoringmodel.jar.bat
 WebContent/WEB-INF/lib/monitoringmodel.jar.symlink.notread
+/target/
